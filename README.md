@@ -8,7 +8,7 @@ Patches from [Gentoo-zh/linux-cjktty](https://github.com/Gentoo-zh/linux-cjktty)
 
 ## Changes
 
-### 2026.4.28 / 7.1 rc1
+### 2026.4.29 / 7.1 rc1
 
 - Update for linux 7.1 rc1
 
