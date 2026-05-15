@@ -8,9 +8,9 @@ Patches from [Gentoo-zh/linux-cjktty](https://github.com/Gentoo-zh/linux-cjktty)
 
 ## Changes
 
-### 2026.5.16 / 7.0.8 cachyos
+### 2026.5.16 / 7.0.8
 
-- Update for linux 7.0.8 patched by cachyos
+- Update for linux 7.0.8
 
 ### 2026.4.29 / 7.1 rc1
 
