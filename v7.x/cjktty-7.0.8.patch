@@ -316,10 +316,20 @@ index 085ffb44c..b9e2dff66 100644
  	if (par->cursor_state.image.data != src ||
  	    par->cursor_reset) {
 diff --git a/drivers/video/fbdev/core/fbcon.c b/drivers/video/fbdev/core/fbcon.c
-index 666261ae5..bc8278940 100644
+index 666261ae5..78e1e6144 100644
 --- a/drivers/video/fbdev/core/fbcon.c
 +++ b/drivers/video/fbdev/core/fbcon.c
-@@ -1104,7 +1104,7 @@ static void fbcon_init(struct vc_data *vc, bool init)
+@@ -747,7 +747,8 @@ static void fbcon_release(struct fb_info *info)
+ 		kfree(par->cursor_state.mask);
+ 		kfree(par->cursor_data);
+ 		kfree(par->cursor_src);
+-		kfree(par->fontbuffer);
++		kvfree(par->fontbuffer);
++        kvfree(par->fontbuffer_utf);
+ 		kfree(info->fbcon_par);
+ 		info->fbcon_par = NULL;
+ 	}
+@@ -1104,7 +1105,7 @@ static void fbcon_init(struct vc_data *vc, bool init)
  
  	vc->vc_can_do_color = (fb_get_color_depth(&info->var, &info->fix)!=1);
  	vc->vc_complement_mask = vc->vc_can_do_color ? 0x7700 : 0x0800;
@@ -328,7 +338,7 @@ index 666261ae5..bc8278940 100644
  		vc->vc_hi_font_mask = 0;
  	} else {
  		vc->vc_hi_font_mask = 0x100;
-@@ -1427,7 +1427,7 @@ static void fbcon_set_disp(struct fb_info *info, struct fb_var_screeninfo *var,
+@@ -1427,7 +1428,7 @@ static void fbcon_set_disp(struct fb_info *info, struct fb_var_screeninfo *var,
  	par->var = info->var;
  	vc->vc_can_do_color = (fb_get_color_depth(&info->var, &info->fix)!=1);
  	vc->vc_complement_mask = vc->vc_can_do_color ? 0x7700 : 0x0800;
@@ -337,7 +347,7 @@ index 666261ae5..bc8278940 100644
  		vc->vc_hi_font_mask = 0;
  	} else {
  		vc->vc_hi_font_mask = 0x100;
-@@ -1647,6 +1647,8 @@ static void fbcon_redraw_blit(struct vc_data *vc, struct fb_info *info,
+@@ -1647,6 +1648,8 @@ static void fbcon_redraw_blit(struct vc_data *vc, struct fb_info *info,
  			}
  
  			scr_writew(c, d);
@@ -346,7 +356,7 @@ index 666261ae5..bc8278940 100644
  			s++;
  			d++;
  		} while (s < le);
-@@ -1666,6 +1668,7 @@ static void fbcon_redraw_blit(struct vc_data *vc, struct fb_info *info,
+@@ -1666,6 +1669,7 @@ static void fbcon_redraw_blit(struct vc_data *vc, struct fb_info *info,
  
  static void fbcon_redraw(struct vc_data *vc, int line, int count, int offset)
  {
@@ -354,7 +364,7 @@ index 666261ae5..bc8278940 100644
  	unsigned short *d = (unsigned short *)
  	    (vc->vc_origin + vc->vc_size_row * line);
  	unsigned short *s = d + offset;
-@@ -1688,18 +1691,24 @@ static void fbcon_redraw(struct vc_data *vc, int line, int count, int offset)
+@@ -1688,18 +1692,24 @@ static void fbcon_redraw(struct vc_data *vc, int line, int count, int offset)
  					start = s;
  				}
  			}
@@ -388,7 +398,7 @@ index 666261ae5..bc8278940 100644
  			s++;
  			d++;
  		} while (s < le);
-@@ -2183,7 +2192,7 @@ static bool fbcon_switch(struct vc_data *vc)
+@@ -2183,7 +2193,7 @@ static bool fbcon_switch(struct vc_data *vc)
  	vc->vc_can_do_color = (fb_get_color_depth(&info->var, &info->fix)!=1);
  	vc->vc_complement_mask = vc->vc_can_do_color ? 0x7700 : 0x0800;
  
@@ -486,7 +496,7 @@ index 3c3ad3471..edbd462a5 100644
  	if (par->cursor_state.image.data != src ||
  	    par->cursor_reset) {
 diff --git a/drivers/video/fbdev/core/fbcon_rotate.c b/drivers/video/fbdev/core/fbcon_rotate.c
-index 1562a8f20..b3e31a57b 100644
+index 5348f6c6f..242887a30 100644
 --- a/drivers/video/fbdev/core/fbcon_rotate.c
 +++ b/drivers/video/fbdev/core/fbcon_rotate.c
 @@ -14,10 +14,76 @@
@@ -519,7 +529,7 @@ index 1562a8f20..b3e31a57b 100644
 +	d_cellsize = s_cellsize;
 +
 +	if (par->fd_size_utf < d_cellsize * len) {
-+		dst = kvmalloc_array(len, d_cellsize, GFP_KERNEL | __GFP_RETRY_MAYFAIL);
++		dst = kvmalloc_array(len, d_cellsize, GFP_KERNEL);
 +
 +		if (dst == NULL) {
 +			err = -ENOMEM;
@@ -566,7 +576,21 @@ index 1562a8f20..b3e31a57b 100644
  int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
  {
  	struct fbcon_par *par = info->fbcon_par;
-@@ -89,6 +155,9 @@ int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
+@@ -46,11 +112,11 @@ int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
+ 		info->fbops->fb_sync(info);
+ 
+ 	if (par->fd_size < d_cellsize * len) {
+-		kfree(par->fontbuffer);
++		kvfree(par->fontbuffer);
+ 		par->fontbuffer = NULL;
+ 		par->fd_size = 0;
+ 
+-		dst = kmalloc_array(len, d_cellsize, GFP_KERNEL);
++		dst = kvmalloc_array(len, d_cellsize, GFP_KERNEL);
+ 
+ 		if (dst == NULL) {
+ 			err = -ENOMEM;
+@@ -92,6 +158,9 @@ int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
  		break;
  	}
  
