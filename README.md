@@ -8,6 +8,10 @@ Patches from [Gentoo-zh/linux-cjktty](https://github.com/Gentoo-zh/linux-cjktty)
 
 ## Changes
 
+### 2026.11.6 / 7.4 rc1
+
+- Rebase cjktty for linux 7.4-rc1 (vanilla kernel.org baseline)
+
 ### 2026.5.18 / 6.12.90
 
 - Update for linux 6.12.90
