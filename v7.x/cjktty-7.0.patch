@@ -12,10 +12,10 @@ index 13f4e48b4..c9a8750e6 100644
  	vc_sel.buf_len = bp - vc_sel.buffer;
  
 diff --git a/drivers/tty/vt/vt.c b/drivers/tty/vt/vt.c
-index 59b4b5e12..e1707405b 100644
+index b4b19157f..c41670050 100644
 --- a/drivers/tty/vt/vt.c
 +++ b/drivers/tty/vt/vt.c
-@@ -302,6 +302,14 @@ static void con_putc(struct vc_data *vc, u16 ca, unsigned int y, unsigned int x)
+@@ -296,6 +296,14 @@ static void con_putc(struct vc_data *vc, u16 ca, unsigned int y, unsigned int x)
  		vc->vc_sw->con_putcs(vc, &ca, 1, y, x);
  }
  
@@ -30,7 +30,7 @@ index 59b4b5e12..e1707405b 100644
  /* Called  from the keyboard irq path.. */
  static inline void scrolldelta(int lines)
  {
-@@ -597,6 +605,10 @@ static void con_scroll(struct vc_data *vc, unsigned int top,
+@@ -591,6 +599,10 @@ static void con_scroll(struct vc_data *vc, unsigned int top,
  	}
  	scr_memmovew(dst, src, (rows - nr) * vc->vc_size_row);
  	scr_memsetw(clear, vc->vc_video_erase_char, vc->vc_size_row * nr);
@@ -41,7 +41,7 @@ index 59b4b5e12..e1707405b 100644
  }
  
  static void do_update_region(struct vc_data *vc, unsigned long start, int count)
-@@ -755,6 +767,7 @@ void complement_pos(struct vc_data *vc, int offset)
+@@ -749,6 +761,7 @@ void complement_pos(struct vc_data *vc, int offset)
  {
  	static int old_offset = -1;
  	static unsigned short old;
@@ -49,7 +49,7 @@ index 59b4b5e12..e1707405b 100644
  	static unsigned short oldx, oldy;
  
  	WARN_CONSOLE_UNLOCKED();
-@@ -763,7 +776,7 @@ void complement_pos(struct vc_data *vc, int offset)
+@@ -757,7 +770,7 @@ void complement_pos(struct vc_data *vc, int offset)
  	    old_offset < vc->vc_screenbuf_size) {
  		scr_writew(old, screenpos(vc, old_offset, true));
  		if (con_should_update(vc))
@@ -58,7 +58,7 @@ index 59b4b5e12..e1707405b 100644
  		notify_update(vc);
  	}
  
-@@ -773,13 +786,15 @@ void complement_pos(struct vc_data *vc, int offset)
+@@ -767,13 +780,15 @@ void complement_pos(struct vc_data *vc, int offset)
  	    offset < vc->vc_screenbuf_size) {
  		unsigned short new;
  		u16 *p = screenpos(vc, offset, true);
@@ -75,7 +75,7 @@ index 59b4b5e12..e1707405b 100644
  		}
  		notify_update(vc);
  	}
-@@ -1090,7 +1105,7 @@ int vc_allocate(unsigned int currcons)	/* return 0 on success */
+@@ -1084,7 +1099,7 @@ int vc_allocate(unsigned int currcons)	/* return 0 on success */
  	    vc->vc_screenbuf_size > KMALLOC_MAX_SIZE || !vc->vc_screenbuf_size)
  		goto err_free;
  	err = -ENOMEM;
@@ -84,7 +84,7 @@ index 59b4b5e12..e1707405b 100644
  	if (!vc->vc_screenbuf)
  		goto err_free;
  
-@@ -1144,6 +1159,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
+@@ -1138,6 +1153,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
  	unsigned long old_origin, new_origin, new_scr_end, rlth, rrem, err = 0;
  	unsigned long end;
  	unsigned int old_rows, old_row_size, first_copied_row;
@@ -92,7 +92,7 @@ index 59b4b5e12..e1707405b 100644
  	unsigned int new_cols, new_rows, new_row_size, new_screen_size;
  	unsigned short *oldscreen, *newscreen;
  	u32 **new_uniscr = NULL;
-@@ -1180,7 +1196,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
+@@ -1174,7 +1190,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
  
  	if (new_screen_size > KMALLOC_MAX_SIZE || !new_screen_size)
  		return -EINVAL;
@@ -101,7 +101,7 @@ index 59b4b5e12..e1707405b 100644
  	if (!newscreen)
  		return -ENOMEM;
  
-@@ -1197,6 +1213,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
+@@ -1191,6 +1207,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
  
  	old_rows = vc->vc_rows;
  	old_row_size = vc->vc_size_row;
@@ -109,7 +109,7 @@ index 59b4b5e12..e1707405b 100644
  
  	err = resize_screen(vc, new_cols, new_rows, from_user);
  	if (err) {
-@@ -1245,15 +1262,23 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
+@@ -1239,15 +1256,23 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
  	while (old_origin < end) {
  		scr_memcpyw((unsigned short *) new_origin,
  			    (unsigned short *) old_origin, rlth);
@@ -135,7 +135,7 @@ index 59b4b5e12..e1707405b 100644
  	oldscreen = vc->vc_screenbuf;
  	vc->vc_screenbuf = newscreen;
  	vc->vc_screenbuf_size = new_screen_size;
-@@ -3111,6 +3136,8 @@ static int vc_con_write_normal(struct vc_data *vc, int tc, int c,
+@@ -3131,6 +3156,8 @@ static int vc_con_write_normal(struct vc_data *vc, int tc, int c,
  	tc = vc_get_glyph(vc, tc);
  	if (tc == -1)
  		return -1; /* nothing to display */
@@ -144,7 +144,7 @@ index 59b4b5e12..e1707405b 100644
  	if (tc < 0) {
  		inverse = true;
  		tc = conv_uni_to_pc(vc, '?');
-@@ -3121,7 +3148,11 @@ static int vc_con_write_normal(struct vc_data *vc, int tc, int c,
+@@ -3141,7 +3168,11 @@ static int vc_con_write_normal(struct vc_data *vc, int tc, int c,
  		con_flush(vc, draw);
  	}
  
@@ -157,7 +157,7 @@ index 59b4b5e12..e1707405b 100644
  	while (1) {
  		if (vc->vc_need_wrap || vc->vc_decim)
  			con_flush(vc, draw);
-@@ -3139,6 +3170,7 @@ static int vc_con_write_normal(struct vc_data *vc, int tc, int c,
+@@ -3159,6 +3190,7 @@ static int vc_con_write_normal(struct vc_data *vc, int tc, int c,
  		tc |= (vc_attr << 8) & ~himask;
  
  		scr_writew(tc, (u16 *)vc->vc_pos);
@@ -165,7 +165,7 @@ index 59b4b5e12..e1707405b 100644
  
  		if (con_should_update(vc) && draw->x < 0) {
  			draw->x = vc->state.x;
-@@ -3155,6 +3187,9 @@ static int vc_con_write_normal(struct vc_data *vc, int tc, int c,
+@@ -3175,6 +3207,9 @@ static int vc_con_write_normal(struct vc_data *vc, int tc, int c,
  		if (!--width)
  			break;
  
@@ -175,7 +175,7 @@ index 59b4b5e12..e1707405b 100644
  		/* A space is printed in the second column */
  		tc = conv_uni_to_pc(vc, ' ');
  		if (tc < 0)
-@@ -3203,6 +3238,8 @@ static int do_con_write(struct tty_struct *tty, const u8 *buf, int count)
+@@ -3223,6 +3258,8 @@ static int do_con_write(struct tty_struct *tty, const u8 *buf, int count)
  	if (con_is_fg(vc))
  		hide_cursor(vc);
  
@@ -184,7 +184,7 @@ index 59b4b5e12..e1707405b 100644
  	param.vc = vc;
  
  	while (!tty->flow.stopped && count) {
-@@ -3789,7 +3826,7 @@ static int __init con_init(void)
+@@ -3809,7 +3846,7 @@ static int __init con_init(void)
  		tty_port_init(&vc->port);
  		visual_init(vc, currcons, true);
  		/* Assuming vc->vc_{cols,rows,screenbuf_size} are sane here. */
@@ -193,7 +193,7 @@ index 59b4b5e12..e1707405b 100644
  		vc_init(vc, currcons || !vc->vc_sw->con_save_screen);
  	}
  	currcons = fg_console = 0;
-@@ -4978,7 +5015,10 @@ u16 screen_glyph(const struct vc_data *vc, int offset)
+@@ -4977,7 +5014,10 @@ u16 screen_glyph(const struct vc_data *vc, int offset)
  {
  	u16 w = scr_readw(screenpos(vc, offset, true));
  	u16 c = w & 0xff;
@@ -315,9 +315,11 @@ index 085ffb44c..b9e2dff66 100644
  
  	if (par->cursor_state.image.data != src ||
  	    par->cursor_reset) {
+diff --git a/drivers/video/fbdev/core/fbcon.c b/drivers/video/fbdev/core/fbcon.c
+index 666261ae5..bc8278940 100644
 --- a/drivers/video/fbdev/core/fbcon.c
 +++ b/drivers/video/fbdev/core/fbcon.c
-@@ -1104,7 +1104,7 @@
+@@ -1104,7 +1104,7 @@ static void fbcon_init(struct vc_data *vc, bool init)
  
  	vc->vc_can_do_color = (fb_get_color_depth(&info->var, &info->fix)!=1);
  	vc->vc_complement_mask = vc->vc_can_do_color ? 0x7700 : 0x0800;
@@ -326,7 +328,7 @@ index 085ffb44c..b9e2dff66 100644
  		vc->vc_hi_font_mask = 0;
  	} else {
  		vc->vc_hi_font_mask = 0x100;
-@@ -1427,7 +1427,7 @@
+@@ -1427,7 +1427,7 @@ static void fbcon_set_disp(struct fb_info *info, struct fb_var_screeninfo *var,
  	par->var = info->var;
  	vc->vc_can_do_color = (fb_get_color_depth(&info->var, &info->fix)!=1);
  	vc->vc_complement_mask = vc->vc_can_do_color ? 0x7700 : 0x0800;
@@ -335,46 +337,58 @@ index 085ffb44c..b9e2dff66 100644
  		vc->vc_hi_font_mask = 0;
  	} else {
  		vc->vc_hi_font_mask = 0x100;
-@@ -1647,6 +1647,9 @@
+@@ -1647,6 +1647,8 @@ static void fbcon_redraw_blit(struct vc_data *vc, struct fb_info *info,
  			}
  
  			scr_writew(c, d);
 +			scr_writew(scr_readw(s + (vc->vc_screenbuf_size >> 1)),
 +				d + (vc->vc_screenbuf_size >> 1));
-+			cond_resched();
  			s++;
  			d++;
-			}
  		} while (s < le);
-@@ -1666,6 +1669,7 @@
+@@ -1666,6 +1668,7 @@ static void fbcon_redraw_blit(struct vc_data *vc, struct fb_info *info,
  
  static void fbcon_redraw(struct vc_data *vc, int line, int count, int offset)
  {
 +	u16 charmask = vc->vc_hi_font_mask ? 0x1ff : 0xff;
  	unsigned short *d = (unsigned short *)
- 	   (vc->vc_origin + vc->vc_size_row * line);
+ 	    (vc->vc_origin + vc->vc_size_row * line);
  	unsigned short *s = d + offset;
-@@ -1688,6 +1692,10 @@
+@@ -1688,18 +1691,24 @@ static void fbcon_redraw(struct vc_data *vc, int line, int count, int offset)
  					start = s;
  				}
  			}
-+		if (((scr_readw(s) & charmask) == 0xff || (scr_readw(s) & charmask) == 0xfe)
-+			&& scr_readw(s + (vc->vc_screenbuf_size >> 1))) {
-+
-+		} else {
- 			if (c == scr_readw(d)) {
- 				if (s > start) {
- 					fbcon_putcs(vc, start, s - start,
-@@ -1700,6 +1708,8 @@
+-			if (c == scr_readw(d)) {
+-				if (s > start) {
+-					fbcon_putcs(vc, start, s - start,
+-						     line, x);
+-					x += s - start + 1;
+-					start = s + 1;
+-				} else {
+-					x++;
+-					start++;
++			if (((scr_readw(s) & charmask) == 0xff || (scr_readw(s) & charmask) == 0xfe)
++				&& scr_readw(s + (vc->vc_screenbuf_size >> 1))) {
++			} else {
++				if (c == scr_readw(d)) {
++					if (s > start) {
++						fbcon_putcs(vc, start, s - start,
++							     line, x);
++						x += s - start + 1;
++						start = s + 1;
++					} else {
++						x++;
++						start++;
++					}
  				}
  			}
  			scr_writew(c, d);
 +			scr_writew(scr_readw(s + (vc->vc_screenbuf_size >> 1)),
-+			          d + (vc->vc_screenbuf_size >> 1));
++				d + (vc->vc_screenbuf_size >> 1));
  			s++;
  			d++;
  		} while (s < le);
-@@ -2183,7 +2193,7 @@
+@@ -2183,7 +2192,7 @@ static bool fbcon_switch(struct vc_data *vc)
  	vc->vc_can_do_color = (fb_get_color_depth(&info->var, &info->fix)!=1);
  	vc->vc_complement_mask = vc->vc_can_do_color ? 0x7700 : 0x0800;
  
@@ -384,10 +398,10 @@ index 085ffb44c..b9e2dff66 100644
  
  	updatescrollmode(p, info, vc);
 diff --git a/drivers/video/fbdev/core/fbcon.h b/drivers/video/fbdev/core/fbcon.h
-index 44ea4ae4b..de6f80272 100644
+index fca14e9b7..9748530ed 100644
 --- a/drivers/video/fbdev/core/fbcon.h
 +++ b/drivers/video/fbdev/core/fbcon.h
-@@ -85,10 +85,12 @@ struct fbcon_par {
+@@ -83,10 +83,12 @@ struct fbcon_par {
  	int    cur_rotate;
  	char  *cursor_data;
  	u8    *fontbuffer;
@@ -400,7 +414,7 @@ index 44ea4ae4b..de6f80272 100644
  
  	const struct fbcon_bitops *bitops;
  };
-@@ -193,6 +195,8 @@ extern void fbcon_set_tileops(struct vc_data *vc, struct fb_info *info);
+@@ -191,6 +193,8 @@ extern void fbcon_set_tileops(struct vc_data *vc, struct fb_info *info);
  #endif
  extern void fbcon_set_bitops_ur(struct fbcon_par *par);
  extern int  soft_cursor(struct fb_info *info, struct fb_cursor *cursor);

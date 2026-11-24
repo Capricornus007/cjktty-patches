@@ -2,12 +2,21 @@
 
 Patches from [Gentoo-zh/linux-cjktty](https://github.com/Gentoo-zh/linux-cjktty) with minor changes.
 
+> [!TIP]
+> To generate a custom `font.h` from a font, use the [cjkfont](https://github.com/bigshans/cjkfont) tool.
+
 - Starting with linux 5.10, the kernel config option `CONFIG_FONT_16x16_CJK` has been renamed to `CONFIG_FONT_CJK_16x16`.
 - To have a larger font on high resolution screens, you probably want to apply 32x32 font data patch.
-- The patch built-in fonts expect to work with 8x16 or 16x32 fonts. When changing to other font sizes, characters may not display correctly.
+- The patch built-in fonts are native on 8x16 and 16x32 cells.  On other font
+  sizes the 16x16 CJK glyph is drawn unscaled and centred in the cell, so it
+  is readable but smaller than the rest of the console text.
+- A 16x32 console without the 32x32 font data patch shows the 16x16 glyphs, unscaled and centred in the cell (half height). Apply the data patch to get the native 32x32 glyphs.
+
+## Testing
+
+After applying the patch, you can use this [gist](https://gist.github.com/bigshans/c7dfbaf845d4f629b202d0b6dec249e4) to test the rendering effect (e.g. CJK characters, double width characters, line wrapping, etc.).
 
 ## Changes
-
 
 ### 2026.11.24 / 7.4 linux-next（cjktty-next 适配补丁，原創）
 - linux-next（rc5 開發線）對 fbdev 字體層做了 font_data_t 引用計數重構：
@@ -49,29 +58,82 @@ Patches from [Gentoo-zh/linux-cjktty](https://github.com/Gentoo-zh/linux-cjktty)
   ```
 - 舊的 `v7.x/cjktty-7.4-rc1.patch`（full）保留給 rc1 基座，不再用於 rc4。
 
-### 2026.11.6 / 7.4 rc1
 
-- Rebase cjktty for linux 7.4-rc1 (vanilla kernel.org baseline)
+### 2026.11.21 / 7.4-rc3
 
-### 2026.5.18 / 6.12.90
+- Update for linux 7.4-rc3; generated from the 7.3.5 patch and carries all of
+  its stability fixes.
+- Fix the selection code dropping the cell after every character above U+0080;
+  only the continuation cell of a wide character is skipped now.  CJK text is
+  also copied as UTF-8 with the keyboard in 8-bit mode (`kbd_mode -a`), where
+  it used to come out as NUL bytes (issue #15); a wide character at the end of
+  a line no longer loses the line break either.
+- `font_bits()`: bound-check the glyph offset, use the native CJK fonts only
+  for 8x16/16x32 cells, and degrade a 16x32 console without the 32x32 data to
+  the 16x16 glyphs instead of reading past the end of the font.  Other cell
+  geometries (e.g. 10x18, 16x16, 6x11) now get the 16x16 CJK glyph centred in
+  the cell instead of the console font's `0xff`/`0xfe` glyphs, i.e. a blank
+  cell plus a solid block (issue #14).
+- The 32x32 font data patch is unchanged and still applies on top of this patch.
 
-- Update for linux 6.12.90
+### 2026.11.21 / 7.3.5
 
-### 2026.5.16 / 7.0.8
+- Update for linux 7.3.5
+- Fix `con_scroll()` clearing the scrolled-in rows with 0 instead of the erase
+  character, which lost their character and attributes.
+- Move the UTF-8 shadow array along with `insert_char()`/`delete_char()`, so that
+  double-width characters are no longer torn apart by ICH/DCH.
+- Store U+200B for the second half of a double-width character in the Unicode
+  screen (it used to hold the code point twice).
+- Fix the selection code dropping the cell after every character above U+0080;
+  only the continuation cell of a wide character is skipped now.  CJK text is
+  also copied as UTF-8 with the keyboard in 8-bit mode (`kbd_mode -a`), where
+  it used to come out as NUL bytes (issue #15); a wide character at the end of
+  a line no longer loses the line break either.
+- Re-render CJK cells from the screen buffer in `complement_pos()` and in the
+  software cursor; `con_putc()` only carries a 16-bit cell, so the code point
+  used to be lost.
+- Restore `FB_CUR_SETIMAGE` in the 90°/180° rotated cursors.
+- `font_bits()`: bound-check the glyph offset, use the native CJK fonts only
+  for 8x16/16x32 cells, and degrade a 16x32 console without the 32x32 data to
+  the 16x16 glyphs instead of reading past the end of the font.  Other cell
+  geometries (e.g. 10x18, 16x16, 6x11) now get the 16x16 CJK glyph centred in
+  the cell instead of the console font's `0xff`/`0xfe` glyphs, i.e. a blank
+  cell plus a solid block (issue #14).
+- `get_default_font()`: never pick the CJK 32x32 font when its data is missing.
+- The 32x32 font data patch is unchanged and still applies on top of this patch.
 
-- Update for linux 7.0.8
+### 2026.11.12 / 7.3.4
 
-### 2026.4.29 / 7.1 rc1
+- Update for linux 7.3.4
 
-- Update for linux 7.1 rc1
+### 2026.11.9 / 7.4-rc1
 
-### 2026.4.13 / 7.0
+- Update for linux 7.4-rc1
+
+### 2026.9.3 / 7.1.13
+
+- Update for linux 7.1.13
+
+### 2026.8.18 / 7.2
+
+- Update for linux 7.2
+
+### 2026.8.9 / 6.12.101
+
+- Remove `static` from `bitblit.c`.
+
+### 2026.7.27 / 7.1.2
+
+- Fix `CONFIG_FRAMEBUFFER_CONSOLE_ROTATION` lost.
+
+### 2026.6.17 / 7.1
+
+- Update for linux 7.1
+
+### 2026.4.14 / 7.0
 
 - Update for linux 7.0
-
-### 2026.4.7 / 7.0 rc 7
-
-- Update for linux 7.0 rc 7
 
 ### 2026.2.14 / 6.19
 

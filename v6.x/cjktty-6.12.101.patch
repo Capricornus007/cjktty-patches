@@ -641,7 +641,7 @@ index 5b09ce713..8b391de19 100644
  		c |= 0x100;
  	return c;
 diff --git a/drivers/video/fbdev/core/bitblit.c b/drivers/video/fbdev/core/bitblit.c
-index dc5ad3fcc..d512ceeb8 100644
+index bed8ba182..eb45860fb 100644
 --- a/drivers/video/fbdev/core/bitblit.c
 +++ b/drivers/video/fbdev/core/bitblit.c
 @@ -16,6 +16,7 @@
@@ -652,7 +652,7 @@ index dc5ad3fcc..d512ceeb8 100644
  #include <asm/types.h>
  #include "fbcon.h"
  
-@@ -43,6 +44,54 @@ static void update_attr(u8 *dst, u8 *src, int attribute,
+@@ -43,6 +44,51 @@ static void update_attr(u8 *dst, u8 *src, int attribute,
  	}
  }
  
@@ -665,9 +665,6 @@ index dc5ad3fcc..d512ceeb8 100644
 +	else
 +		return scr_readw(s + 1);
 +}
-+
-+u8 *font_bits(struct vc_data *vc, const u16 *s, u32 cellsize, u16 charmask,
-+	struct fbcon_par *par);
 +
 +u8 *font_bits(struct vc_data *vc, const u16 *s, u32 cellsize, u16 charmask,
 +	struct fbcon_par *par)
@@ -755,10 +752,10 @@ index dc5ad3fcc..d512ceeb8 100644
  	if (par->cursor_state.image.data != src ||
  	    par->cursor_reset) {
 diff --git a/drivers/video/fbdev/core/fbcon.c b/drivers/video/fbdev/core/fbcon.c
-index e68106673..8ff11d119 100644
+index 01b6a03b8..87901a5f4 100644
 --- a/drivers/video/fbdev/core/fbcon.c
 +++ b/drivers/video/fbdev/core/fbcon.c
-@@ -1078,7 +1078,7 @@ static void fbcon_init(struct vc_data *vc, bool init)
+@@ -1079,7 +1079,7 @@ static void fbcon_init(struct vc_data *vc, bool init)
  
  	vc->vc_can_do_color = (fb_get_color_depth(&info->var, &info->fix)!=1);
  	vc->vc_complement_mask = vc->vc_can_do_color ? 0x7700 : 0x0800;
@@ -785,7 +782,7 @@ index e68106673..8ff11d119 100644
  			console_conditional_schedule();
  			s++;
  			d++;
-@@ -1643,6 +1645,7 @@ static void fbcon_redraw_blit(struct vc_data *vc, struct fb_info *info,
+@@ -1642,6 +1644,7 @@ static void fbcon_redraw_blit(struct vc_data *vc, struct fb_info *info,
  
  static void fbcon_redraw(struct vc_data *vc, int line, int count, int offset)
  {
@@ -793,7 +790,7 @@ index e68106673..8ff11d119 100644
  	unsigned short *d = (unsigned short *)
  	    (vc->vc_origin + vc->vc_size_row * line);
  	unsigned short *s = d + offset;
-@@ -1665,18 +1668,24 @@ static void fbcon_redraw(struct vc_data *vc, int line, int count, int offset)
+@@ -1664,18 +1667,24 @@ static void fbcon_redraw(struct vc_data *vc, int line, int count, int offset)
  					start = s;
  				}
  			}
@@ -827,7 +824,7 @@ index e68106673..8ff11d119 100644
  			console_conditional_schedule();
  			s++;
  			d++;
-@@ -2168,7 +2177,7 @@ static bool fbcon_switch(struct vc_data *vc)
+@@ -2161,7 +2170,7 @@ static bool fbcon_switch(struct vc_data *vc)
  	vc->vc_can_do_color = (fb_get_color_depth(&info->var, &info->fix)!=1);
  	vc->vc_complement_mask = vc->vc_can_do_color ? 0x7700 : 0x0800;
  
@@ -837,10 +834,10 @@ index e68106673..8ff11d119 100644
  
  	updatescrollmode(p, info, vc);
 diff --git a/drivers/video/fbdev/core/fbcon.h b/drivers/video/fbdev/core/fbcon.h
-index 4d97e6d8a..c53b83de8 100644
+index b22c33e27..0a45b6db0 100644
 --- a/drivers/video/fbdev/core/fbcon.h
 +++ b/drivers/video/fbdev/core/fbcon.h
-@@ -82,10 +82,12 @@ struct fbcon_par {
+@@ -81,11 +81,16 @@ struct fbcon_par {
  	int    cur_rotate;
  	char  *cursor_data;
  	u8    *fontbuffer;
@@ -851,10 +848,14 @@ index 4d97e6d8a..c53b83de8 100644
  	u32    fd_size;
 +	u32    fd_size_utf;
  };
++
++u8 *font_bits(struct vc_data *vc, const u16 *s, u32 cellsize, u16 charmask,
++	      struct fbcon_par *par);
      /*
       *  Attribute Decoding
+      */
 diff --git a/drivers/video/fbdev/core/fbcon_ccw.c b/drivers/video/fbdev/core/fbcon_ccw.c
-index 89ef4ba7e..ba76f8061 100644
+index 2ba8ec4c3..459870835 100644
 --- a/drivers/video/fbdev/core/fbcon_ccw.c
 +++ b/drivers/video/fbdev/core/fbcon_ccw.c
 @@ -18,6 +18,8 @@
@@ -885,7 +886,7 @@ index 89ef4ba7e..ba76f8061 100644
  	if (par->cursor_state.image.data != src ||
  	    par->cursor_reset) {
 diff --git a/drivers/video/fbdev/core/fbcon_cw.c b/drivers/video/fbdev/core/fbcon_cw.c
-index b9dac7940..f2711c7fa 100644
+index 4bd22d5ee..354018496 100644
 --- a/drivers/video/fbdev/core/fbcon_cw.c
 +++ b/drivers/video/fbdev/core/fbcon_cw.c
 @@ -18,6 +18,8 @@
@@ -916,7 +917,7 @@ index b9dac7940..f2711c7fa 100644
  	if (par->cursor_state.image.data != src ||
  	    par->cursor_reset) {
 diff --git a/drivers/video/fbdev/core/fbcon_rotate.c b/drivers/video/fbdev/core/fbcon_rotate.c
-index ec3c88340..d549b0880 100644
+index a3f507825..bdd6ea18e 100644
 --- a/drivers/video/fbdev/core/fbcon_rotate.c
 +++ b/drivers/video/fbdev/core/fbcon_rotate.c
 @@ -14,10 +14,74 @@
@@ -994,7 +995,21 @@ index ec3c88340..d549b0880 100644
  static int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
  {
  	struct fbcon_par *par = info->fbcon_par;
-@@ -89,6 +153,9 @@ static int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
+@@ -46,11 +110,11 @@ static int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
+ 		info->fbops->fb_sync(info);
+ 
+ 	if (par->fd_size < d_cellsize * len) {
+-		kfree(par->fontbuffer);
++		kvfree(par->fontbuffer);
+ 		par->fontbuffer = NULL;
+ 		par->fd_size = 0;
+ 
+-		dst = kmalloc_array(len, d_cellsize, GFP_KERNEL);
++		dst = kvmalloc_array(len, d_cellsize, GFP_KERNEL | __GFP_RETRY_MAYFAIL);
+ 
+ 		if (dst == NULL) {
+ 			err = -ENOMEM;
+@@ -92,6 +156,9 @@ static int fbcon_rotate_font(struct fb_info *info, struct vc_data *vc)
  		break;
  	}
  
@@ -1005,7 +1020,7 @@ index ec3c88340..d549b0880 100644
  	return err;
  }
 diff --git a/drivers/video/fbdev/core/fbcon_ud.c b/drivers/video/fbdev/core/fbcon_ud.c
-index 0af7913a2..e2da1f634 100644
+index 14b40e2bf..160c8e0ad 100644
 --- a/drivers/video/fbdev/core/fbcon_ud.c
 +++ b/drivers/video/fbdev/core/fbcon_ud.c
 @@ -18,6 +18,8 @@
