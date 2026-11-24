@@ -8,6 +8,25 @@ Patches from [Gentoo-zh/linux-cjktty](https://github.com/Gentoo-zh/linux-cjktty)
 
 ## Changes
 
+### 2026.11.24 / 7.4 rc4（split 補丁，同步自 gentoo-zh 上游）
+
+- 上游 `gentoo-zh/cjktty-patches` 的 SUPPORTED.md 明確記載：7.4 (mainline) 在
+  **7.4-rc4** 上驗證通過，使用的是 `v7.x/cjktty-code-7.4-rc3.patch`（Split）。
+  原因：7.4 把 `fbcon_fill_cursor_mask()` 換成 `fbcon_cursor_glyph()`，舊的
+  `cjktty-7.4-rc1.patch`（full，code＋字型合一）的 `font_bits()` context 過時，
+  對 rc4 基座所有 fbdev/core hunk 全數 FAILED。
+- 本倉加入 split 方案兩份補丁（原樣同步自 gentoo-zh，未改動內容）：
+  - `v7.x/cjktty-code-7.4-rc3.patch`（33KB，CJK 邏輯＋16x16/32x32 `.c` 字型資料
+    ＋Kconfig/Makefile/fonts.c/font.h）
+  - `cjktty-font-unifont-18.0.01.patch`（12MB，提供 `font_cjk_16x16.h` /
+    `font_cjk_32x32.h` 宣告）
+- 用法（先 code 後 font，rc4 基座 fuzz 0 可套）：
+  ```
+  patch -Np1 < v7.x/cjktty-code-7.4-rc3.patch
+  patch -Np1 < cjktty-font-unifont-18.0.01.patch
+  ```
+- 舊的 `v7.x/cjktty-7.4-rc1.patch`（full）保留給 rc1 基座，不再用於 rc4。
+
 ### 2026.11.6 / 7.4 rc1
 
 - Rebase cjktty for linux 7.4-rc1 (vanilla kernel.org baseline)
