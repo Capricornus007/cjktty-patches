@@ -8,6 +8,28 @@ Patches from [Gentoo-zh/linux-cjktty](https://github.com/Gentoo-zh/linux-cjktty)
 
 ## Changes
 
+
+### 2026.11.24 / 7.4 linux-next（cjktty-next 适配补丁，原創）
+- linux-next（rc5 開發線）對 fbdev 字體層做了 font_data_t 引用計數重構：
+  `struct fbcon_rotated.buf` 從 `u8*` 改成 `font_data_t*`、`bufsize` 欄位移除、
+  `kfree` 改成 `font_data_put()`、`font_data_rotate()` 改 6 參數。
+  上游 `cjktty-code-7.4-rc3.patch`（vanilla rc4 基準）對 next 基座全 hunk 失敗
+  （fuzz/3way 都無法自動適配）。
+- 本倉原創 `v7.x/cjktty-code-next-7.4.patch`：基於完整 linux-next 源碼樹
+  （commit 319106364）手工移植 cjktty 的 CJK tty 渲染路徑到 next 的新 API：
+  bufsize shadow（CONFIG_FONT_CJK 下）、font_data_put 引用計數、
+  fbcon_rotate_font_utf() 用 next 的 font_data_rotate/font_data_size、
+  6 個 fbdev 檔案（bitblit/fbcon/ccw/cw/ud/rotate）注入 CJK 分支。
+- 驗證：在乾淨 next 樹上 fuzz 0 全 hunk 成功；bitblit/fbcon/ccw/cw/ud/rotate
+  + font_cjk_16x16/32x32/fonts 共 9 個 .o 全部 gcc 編譯通過、零 error；
+  fontdata_utf/font_bits/cjk_16x16/cjk_32x32 關鍵符號齊全。
+- 用法（next 基座，依序）：
+  ```
+  patch -p1 --forward < v7.x/cjktty-code-next-7.4.patch
+  patch -p1 --forward < cjktty-add-cjk32x32-font-data.patch
+  patch -p1 --forward < cjktty-font-unifont-18.0.01.patch
+  ```
+
 ### 2026.11.24 / 7.4 rc4（split 補丁，同步自 gentoo-zh 上游）
 
 - 上游 `gentoo-zh/cjktty-patches` 的 SUPPORTED.md 明確記載：7.4 (mainline) 在
