@@ -699,310 +699,114 @@ index bdba3a959..918695652 100644
  		src = font_data_glyph_buf(par->rotated.buf, width, vpitch, '\0');
  		if (!src)
 diff --git a/include/linux/selection.h b/include/linux/selection.h
-index bab7d30d3..e69de29bb 100644
+index bab7d30d3..dc77a8be5 100644
 --- a/include/linux/selection.h
 +++ b/include/linux/selection.h
-@@ -1,52 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0 */
--/*
-- * selection.h
-- *
-- * Interface between console.c, tty_io.c, vt.c, vc_screen.c and selection.c
-- */
--
--#ifndef _LINUX_SELECTION_H_
--#define _LINUX_SELECTION_H_
--
--#include <linux/tiocl.h>
--#include <linux/vt_buffer.h>
--
--struct tty_struct;
--struct vc_data;
--
--void clear_selection(void);
--int set_selection_user(const struct tiocl_selection __user *sel,
--		       struct tty_struct *tty);
--int set_selection_kernel(struct tiocl_selection *v, struct tty_struct *tty);
--int paste_selection(struct tty_struct *tty);
--int sel_loadlut(u32 __user *lut);
--int mouse_reporting(void);
--void mouse_report(struct tty_struct *tty, int butt, int mrx, int mry);
--
--bool vc_is_sel(const struct vc_data *vc);
--
--extern int console_blanked;
--
--extern const unsigned char color_table[];
--extern unsigned char default_red[];
--extern unsigned char default_grn[];
--extern unsigned char default_blu[];
--
--unsigned short *screen_pos(const struct vc_data *vc, int w_offset, bool viewed);
--u16 screen_glyph(const struct vc_data *vc, int offset);
--u32 screen_glyph_unicode(const struct vc_data *vc, int offset);
--void complement_pos(struct vc_data *vc, int offset);
--void invert_screen(struct vc_data *vc, int offset, int count, bool viewed);
--
--void getconsxy(const struct vc_data *vc, unsigned char xy[static 2]);
--void putconsxy(struct vc_data *vc, unsigned char xy[static const 2]);
--
--u16 vcs_scr_readw(const struct vc_data *vc, const u16 *org);
--void vcs_scr_writew(struct vc_data *vc, u16 val, u16 *org);
--void vcs_scr_updated(struct vc_data *vc);
--
--int vc_uniscr_check(struct vc_data *vc);
--void vc_uniscr_copy_line(const struct vc_data *vc, void *dest, bool viewed,
--			 unsigned int row, unsigned int col, unsigned int nr);
--
--#endif
+@@ -46,6 +46,17 @@ void vcs_scr_writew(struct vc_data *vc, u16 val, u16 *org);
+ void vcs_scr_updated(struct vc_data *vc);
+ 
+ int vc_uniscr_check(struct vc_data *vc);
++#ifdef CONFIG_FONT_CJK
++u32 vc_uniscr_get_cjk(const struct vc_data *vc, unsigned int row,
++		      unsigned int col, bool *continuation);
++#else
++static inline u32 vc_uniscr_get_cjk(const struct vc_data *vc, unsigned int row,
++				   unsigned int col, bool *continuation)
++{
++	*continuation = false;
++	return 0;
++}
++#endif
+ void vc_uniscr_copy_line(const struct vc_data *vc, void *dest, bool viewed,
+ 			 unsigned int row, unsigned int col, unsigned int nr);
+ 
 diff --git a/lib/fonts/Kconfig b/lib/fonts/Kconfig
-index 7d03823e4..e69de29bb 100644
+index 7d03823e4..58a5182b2 100644
 --- a/lib/fonts/Kconfig
 +++ b/lib/fonts/Kconfig
-@@ -1,159 +0,0 @@
--# SPDX-License-Identifier: GPL-2.0-only
--#
--# Font configuration
--#
--
--config FONT_SUPPORT
--	tristate
--
--if FONT_SUPPORT
--
--config FONTS
--	bool "Select compiled-in fonts"
--	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE || DRM_PANIC || DRM_CLIENT_LOG
--	help
--	  Say Y here if you would like to use fonts other than the default
--	  your frame buffer console usually use.
--
--	  Note that the answer to this question won't directly affect the
--	  kernel: saying N will just cause the configurator to skip all
--	  the questions about foreign fonts.
--
--	  If unsure, say N (the default choices are safe).
--
--config FONT_8x8
--	bool "VGA 8x8 font" if FONTS
--	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE || DRM_PANIC
--	default y if !SPARC && !FONTS
--	help
--	  This is the "high resolution" font for the VGA frame buffer (the one
--	  provided by the text console 80x50 (and higher) modes).
--
--	  Note that this is a poor quality font. The VGA 8x16 font is quite a
--	  lot more readable.
--
--	  Given the resolution provided by the frame buffer device, answer N
--	  here is safe.
--
--config FONT_8x16
--	bool "VGA 8x16 font" if FONTS
--	default y if !SPARC && !FONTS
--	help
--	  This is the "high resolution" font for the VGA frame buffer (the one
--	  provided by the VGA text console 80x25 mode.
--
--	  If unsure, say Y.
--
--config FONT_6x11
--	bool "Mac console 6x11 font (not supported by all drivers)" if FONTS
--	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE || DRM_PANIC
--	default y if !SPARC && !FONTS && MAC
--	help
--	  Small console font with Macintosh-style high-half glyphs.  Some Mac
--	  framebuffer drivers don't support this one at all.
--
--config FONT_7x14
--	bool "console 7x14 font (not supported by all drivers)" if FONTS
--	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
--	help
--	  Console font with characters just a bit smaller than the default.
--	  If the standard 8x16 font is a little too big for you, say Y.
--	  Otherwise, say N.
--
--config FONT_PEARL_8x8
--	bool "Pearl (old m68k) console 8x8 font" if FONTS
--	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
--	default y if !SPARC && !FONTS && AMIGA
--	help
--	  Small console font with PC-style control-character and high-half
--	  glyphs.
--
--config FONT_ACORN_8x8
--	bool "Acorn console 8x8 font" if FONTS
--	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
--	default y if !SPARC && !FONTS && ARM && ARCH_ACORN
--	help
--	  Small console font with PC-style control characters and high-half
--	  glyphs.
--
--config FONT_MINI_4x6
--	bool "Mini 4x6 font"
--	depends on !SPARC && FONTS
--
--config FONT_6x10
--	bool "Medium-size 6x10 font"
--	depends on !SPARC && FONTS
--	help
--	  Medium-size console font. Suitable for framebuffer consoles on
--	  embedded devices with a 320x240 screen, to get a reasonable number
--	  of characters (53x24) that are still at a readable size.
--
--config FONT_10x18
--	bool "console 10x18 font (not supported by all drivers)" if FONTS
--	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
--	help
--	  This is a high resolution console font for machines with very
--	  big letters. It fits between the sun 12x22 and the normal 8x16 font.
--	  If other fonts are too big or too small for you, say Y, otherwise say N.
--
--config FONT_SUN8x16
--	bool "Sparc console 8x16 font"
--	depends on (FRAMEBUFFER_CONSOLE && (FONTS || SPARC)) || \
--		   BOOTX_TEXT || EARLYFB
--	help
--	  This is the high resolution console font for Sun machines. Say Y.
--
--config FONT_SUN12x22
--	bool "Sparc console 12x22 font (not supported by all drivers)"
--	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
--	depends on !SPARC && FONTS
--	help
--	  This is the high resolution console font for Sun machines with very
--	  big letters (like the letters used in the SPARC PROM). If the
--	  standard font is unreadable for you, say Y, otherwise say N.
--
--config FONT_TER10x18
--	bool "Terminus 10x18 font (not supported by all drivers)"
--	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
--	depends on !SPARC && FONTS || SPARC
--	help
--	  Terminus Font is a clean, fixed width bitmap font, designed
--	  for long (8 and more hours per day) work with computers.
--	  This is the high resolution version made for use with 13-16" laptops.
--	  It fits between the normal 8x16 font and Terminus 16x32.
--	  If other fonts are unreadable for you, say Y, otherwise say N.
--
--config FONT_TER16x32
--	bool "Terminus 16x32 font (not supported by all drivers)"
--	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
--	depends on !SPARC && FONTS || SPARC
--	help
--	  Terminus Font is a clean, fixed width bitmap font, designed
--	  for long (8 and more hours per day) work with computers.
--	  This is the high resolution, large version for use with HiDPI screens.
--	  If the standard font is unreadable for you, say Y, otherwise say N.
--
--config FONT_6x8
--	bool "OLED 6x8 font" if FONTS
--	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
--	help
--	  This font is useful for small displays (OLED).
--
--config FONT_AUTOSELECT
--	def_bool y
--	depends on !FONT_8x8
--	depends on !FONT_6x11
--	depends on !FONT_7x14
--	depends on !FONT_PEARL_8x8
--	depends on !FONT_ACORN_8x8
--	depends on !FONT_MINI_4x6
--	depends on !FONT_6x10
--	depends on !FONT_SUN8x16
--	depends on !FONT_SUN12x22
--	depends on !FONT_10x18
--	depends on !FONT_TER10x18
--	depends on !FONT_TER16x32
--	depends on !FONT_6x8
--	select FONT_8x16
--
--endif # FONT_SUPPORT
+@@ -139,6 +139,40 @@ config FONT_6x8
+ 	help
+ 	  This font is useful for small displays (OLED).
+ 
++config FONT_CJK
++	bool
++
++config FONT_CJK_16x16
++	bool "CJK 16x16 font" if FONTS
++	depends on FRAMEBUFFER_CONSOLE && VT_CONSOLE
++	select FONT_CJK
++	select CONSOLE_TRANSLATIONS
++	help
++	  A 16x16 console font covering the Unicode Basic Multilingual Plane,
++	  so the framebuffer console can display Chinese, Japanese and Korean
++	  text. Each glyph occupies two 8x16 cells, and the font data adds
++	  about 2 MiB to the kernel image.
++	  Unicode text uses four bytes per screen cell plus row pointers,
++	  doubled while an alternate screen is saved. Rotation needs 2 MiB per
++	  framebuffer console instance, in addition to the ordinary font.
++
++	  If unsure, say N.
++
++config FONT_CJK_32x32
++	bool "CJK 32x32 font" if FONTS
++	depends on FRAMEBUFFER_CONSOLE && VT_CONSOLE
++	select FONT_CJK
++	select CONSOLE_TRANSLATIONS
++	default n
++	help
++	  A 32x32 console font covering the Unicode Basic Multilingual Plane,
++	  for screens on which the 16x16 font is too small to read. Each glyph
++	  occupies two 16x32 cells and the data adds about 8 MiB to the kernel
++	  image. Apply cjktty-add-cjk32x32-font-data.patch before enabling this
++	  option; the build fails if font_cjk_32x32.h is empty.
++
++	  If unsure, say N.
++
+ config FONT_AUTOSELECT
+ 	def_bool y
+ 	depends on !FONT_8x8
+@@ -154,6 +188,8 @@ config FONT_AUTOSELECT
+ 	depends on !FONT_TER10x18
+ 	depends on !FONT_TER16x32
+ 	depends on !FONT_6x8
++	depends on !FONT_CJK_16x16
++	depends on !FONT_CJK_32x32
+ 	select FONT_8x16
+ 
+ endif # FONT_SUPPORT
 diff --git a/lib/fonts/Makefile b/lib/fonts/Makefile
-index bc08bf8ea..e69de29bb 100644
+index bc08bf8ea..e8b666056 100644
 --- a/lib/fonts/Makefile
 +++ b/lib/fonts/Makefile
-@@ -1,24 +0,0 @@
--# SPDX-License-Identifier: GPL-2.0
--# Font handling
--
--font-y := fonts.o \
--	  font_cursor.o
--font-$(CONFIG_FRAMEBUFFER_CONSOLE_ROTATION) += font_rotate.o
--
--# Built-in fonts; sorted by Family-Size in ascending order
--font-$(CONFIG_FONT_6x8)       += font_6x8.o
--font-$(CONFIG_FONT_6x10)      += font_6x10.o
--font-$(CONFIG_FONT_6x11)      += font_6x11.o
--font-$(CONFIG_FONT_7x14)      += font_7x14.o
--font-$(CONFIG_FONT_8x8)       += font_8x8.o
--font-$(CONFIG_FONT_8x16)      += font_8x16.o
--font-$(CONFIG_FONT_10x18)     += font_10x18.o
--font-$(CONFIG_FONT_ACORN_8x8) += font_acorn_8x8.o
--font-$(CONFIG_FONT_MINI_4x6)  += font_mini_4x6.o
--font-$(CONFIG_FONT_PEARL_8x8) += font_pearl_8x8.o
--font-$(CONFIG_FONT_SUN8x16)   += font_sun8x16.o
--font-$(CONFIG_FONT_SUN12x22)  += font_sun12x22.o
--font-$(CONFIG_FONT_TER10x18)  += font_ter10x18.o
--font-$(CONFIG_FONT_TER16x32)  += font_ter16x32.o
--
--obj-$(CONFIG_FONT_SUPPORT) += font.o
+@@ -20,5 +20,13 @@ font-$(CONFIG_FONT_SUN8x16)   += font_sun8x16.o
+ font-$(CONFIG_FONT_SUN12x22)  += font_sun12x22.o
+ font-$(CONFIG_FONT_TER10x18)  += font_ter10x18.o
+ font-$(CONFIG_FONT_TER16x32)  += font_ter16x32.o
++font-$(CONFIG_FONT_CJK_16x16) += font_cjk_16x16.o
++font-$(CONFIG_FONT_CJK_32x32) += font_cjk_32x32.o
++
++ifeq ($(CONFIG_FONT_CJK_32x32),y)
++ifeq ($(shell test -s $(srctree)/lib/fonts/font_cjk_32x32.h && echo y),)
++$(error CONFIG_FONT_CJK_32x32 requires cjktty-add-cjk32x32-font-data.patch)
++endif
++endif
+ 
+ obj-$(CONFIG_FONT_SUPPORT) += font.o
 diff --git a/lib/fonts/font.h b/lib/fonts/font.h
-index eae8c563f..e69de29bb 100644
+index eae8c563f..4867160f0 100644
 --- a/lib/fonts/font.h
 +++ b/lib/fonts/font.h
-@@ -1,50 +0,0 @@
--/* SPDX-License-Identifier: GPL-2.0 */
--
--#ifndef _LIB_FONTS_FONT_H
--#define _LIB_FONTS_FONT_H
--
--#include <linux/font.h>
--#include <linux/types.h>
--
--/*
-- * Font data
-- */
--
--#define FONT_EXTRA_WORDS 4
--
--struct font_data {
--	unsigned int extra[FONT_EXTRA_WORDS];
--	unsigned char data[];
--} __packed;
--
--/*
-- * font_data_t and helpers
-- */
--
--static inline unsigned char *__font_data_wrbuf(font_data_t *fd)
--{
--	return (unsigned char *)fd;
--}
--
--font_data_t *__font_data_alloc(unsigned int size, gfp_t flags);
--
--/*
-- * Built-in fonts
-- */
--
--#define VGA8x8_IDX	0
--#define VGA8x16_IDX	1
--#define PEARL8x8_IDX	2
--#define VGA6x11_IDX	3
--#define FONT7x14_IDX	4
--#define	FONT10x18_IDX	5
--#define SUN8x16_IDX	6
--#define SUN12x22_IDX	7
--#define ACORN8x8_IDX	8
--#define	MINI4x6_IDX	9
--#define FONT6x10_IDX	10
--#define TER16x32_IDX	11
--#define FONT6x8_IDX	12
--#define TER10x18_IDX	13
--
--#endif
+@@ -46,5 +46,10 @@ font_data_t *__font_data_alloc(unsigned int size, gfp_t flags);
+ #define TER16x32_IDX	11
+ #define FONT6x8_IDX	12
+ #define TER10x18_IDX	13
++#define CJK16x16_IDX	14
++#define CJK32x32_IDX	15
++
++extern const struct font_desc font_cjk_16x16;
++extern const struct font_desc font_cjk_32x32;
+ 
+ #endif
 diff --git a/lib/fonts/font_cjk_16x16.c b/lib/fonts/font_cjk_16x16.c
 new file mode 100644
 index 000000000..974532915
