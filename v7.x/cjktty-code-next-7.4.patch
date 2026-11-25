@@ -266,8 +266,8 @@ index 2488221a0..3d374dfc3 100644
  
 +#ifdef CONFIG_FONT_CJK
 +		bool continuation;
-+		u32 cy = (image->dy / vc->vc_font.height + par->p->vrows -
-+			  par->p->yscroll) % par->p->vrows;
++		u32 cy = (image->dy / vc->vc_font.height + info->fbcon_par->p->vrows -
++			  info->fbcon_par->p->yscroll) % info->fbcon_par->p->vrows;
 +		u32 cx = image->dx / vc->vc_font.width + (cnt);
 +		u32 c_utf = vc_uniscr_get_cjk(vc, cy, cx, &continuation);
 +		u32 cellsize = font_glyph_size(s_width, s_vpitch);
@@ -285,8 +285,8 @@ index 2488221a0..3d374dfc3 100644
  
 +#ifdef CONFIG_FONT_CJK
 +		bool continuation;
-+		u32 cy = (image->dy / vc->vc_font.height + par->p->vrows -
-+			  par->p->yscroll) % par->p->vrows;
++		u32 cy = (image->dy / vc->vc_font.height + info->fbcon_par->p->vrows -
++			  info->fbcon_par->p->yscroll) % info->fbcon_par->p->vrows;
 +		u32 cx = image->dx / vc->vc_font.width + (cnt);
 +		u32 c_utf = vc_uniscr_get_cjk(vc, cy, cx, &continuation);
 +		u32 cellsize = font_glyph_size(s_width, s_vpitch);
