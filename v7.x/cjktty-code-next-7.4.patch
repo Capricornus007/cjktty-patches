@@ -152,7 +152,7 @@ index 6a6eb8b2a..0910664e4 100644
  	if ((unsigned long)org == vc->vc_pos) {
  		softcursor_original = -1;
 diff --git a/drivers/video/fbdev/core/bitblit.c b/drivers/video/fbdev/core/bitblit.c
-index 2a04a1a17..5a4342cba 100644
+index 2488221a0..3d374dfc3 100644
 --- a/drivers/video/fbdev/core/bitblit.c
 +++ b/drivers/video/fbdev/core/bitblit.c
 @@ -16,6 +16,9 @@
@@ -274,10 +274,10 @@ index 2a04a1a17..5a4342cba 100644
 +
 +		src = font_bits(vc, ch, c_utf, continuation, cellsize, NULL);
 +#else
- 		src = font_data_glyph_buf(par->p->fontdata, s_width, s_vpitch, ch);
+ 		src = font_data_glyph_buf(fd, s_width, s_vpitch, ch);
 +#endif
  		if (!src) {
- 			src = font_data_glyph_buf(par->p->fontdata, s_width, s_vpitch, '\0');
+ 			src = font_data_glyph_buf(fd, s_width, s_vpitch, '\0');
  			if (!src)
 @@ -132,7 +234,18 @@ static inline void bit_putcs_unaligned(struct vc_data *vc,
  	while (cnt--) {
@@ -293,12 +293,12 @@ index 2a04a1a17..5a4342cba 100644
 +
 +		src = font_bits(vc, ch, c_utf, continuation, cellsize, NULL);
 +#else
- 		src = font_data_glyph_buf(par->p->fontdata, s_width, s_vpitch, ch);
+ 		src = font_data_glyph_buf(fd, s_width, s_vpitch, ch);
 +#endif
  		if (!src) {
- 			src = font_data_glyph_buf(par->p->fontdata, s_width, s_vpitch, '\0');
+ 			src = font_data_glyph_buf(fd, s_width, s_vpitch, '\0');
  			if (!src)
-@@ -296,7 +409,17 @@ static void bit_cursor(struct vc_data *vc, struct fb_info *info, bool enable,
+@@ -297,7 +410,17 @@ static void bit_cursor(struct vc_data *vc, struct fb_info *info, bool enable,
  	attribute = get_attribute(info, c);
  	c &= charmask;
  
@@ -311,13 +311,13 @@ index 2a04a1a17..5a4342cba 100644
 +		src = font_bits(vc, c, c_utf, continuation, cellsize, NULL);
 +	}
 +#else
- 	src = font_data_glyph_buf(par->p->fontdata, width, vpitch, c);
+ 	src = font_data_glyph_buf(fd, width, vpitch, c);
 +#endif
  	if (!src) {
- 		src = font_data_glyph_buf(par->p->fontdata, width, vpitch, '\0');
+ 		src = font_data_glyph_buf(fd, width, vpitch, '\0');
  		if (!src)
 diff --git a/drivers/video/fbdev/core/fbcon.c b/drivers/video/fbdev/core/fbcon.c
-index 4189dacaa..4c3f1a9be 100644
+index 21527d849..b972f2e33 100644
 --- a/drivers/video/fbdev/core/fbcon.c
 +++ b/drivers/video/fbdev/core/fbcon.c
 @@ -803,6 +803,11 @@ static void fbcon_release(struct fb_info *info)
@@ -382,32 +382,22 @@ index 4189dacaa..4c3f1a9be 100644
  		vc->vc_complement_mask <<= 1;
  
  	updatescrollmode(p, info, vc);
-@@ -2511,8 +2523,14 @@ static int fbcon_do_set_font(struct vc_data *vc, int w, int h, int charcount,
- 	}
- 
- #ifdef CONFIG_FRAMEBUFFER_CONSOLE_ROTATION
--	if (rotated_saved)
-+	if (rotated_saved) {
+@@ -2514,6 +2526,9 @@ static int fbcon_do_set_font(struct vc_data *vc, int w, int h, int charcount,
+ 	if (rotated_saved) {
+ 		if (saved_rotated.buf)
+ 			font_data_put(saved_rotated.buf);
 +#ifdef CONFIG_FONT_CJK
-+		font_data_put(saved_rotated.buf);
 +		kvfree(saved_rotated.buf_utf);
-+#else
- 		kfree(saved_rotated.buf);
 +#endif
-+	}
+ 	}
  #endif
  	if (old_fontdata)
- 		font_data_put(old_fontdata);
-@@ -2526,7 +2544,12 @@ static int fbcon_do_set_font(struct vc_data *vc, int w, int h, int charcount,
- 	 * state.
- 	 */
+@@ -2530,6 +2545,9 @@ static int fbcon_do_set_font(struct vc_data *vc, int w, int h, int charcount,
  	if (rotated_saved) {
--		kfree(par->rotated.buf);
+ 		if (par->rotated.buf)
+ 			font_data_put(par->rotated.buf);
 +#ifdef CONFIG_FONT_CJK
-+		font_data_put(par->rotated.buf);
 +		kvfree(par->rotated.buf_utf);
-+#else
-+		font_data_put(par->rotated.buf);
 +#endif
  		par->rotated = saved_rotated;
  	}
@@ -453,7 +443,7 @@ index acdb00759..ff632518b 100644
  unsigned char *fbcon_cursor_glyph(const struct vc_font *font, unsigned int cursor_type);
  
 diff --git a/drivers/video/fbdev/core/fbcon_ccw.c b/drivers/video/fbdev/core/fbcon_ccw.c
-index cbaa75fc1..62e7e1710 100644
+index 272844ad5..62e7e1710 100644
 --- a/drivers/video/fbdev/core/fbcon_ccw.c
 +++ b/drivers/video/fbdev/core/fbcon_ccw.c
 @@ -105,10 +105,25 @@ static inline void ccw_putcs_aligned(struct vc_data *vc, struct fb_info *info,
@@ -482,7 +472,7 @@ index cbaa75fc1..62e7e1710 100644
  		if (!src) {
  			src = font_data_glyph_buf(par->rotated.buf, s_width, s_vpitch, '\0');
  			if (!src)
-@@ -250,9 +265,19 @@ static void ccw_cursor(struct vc_data *vc, struct fb_info *info, bool enable,
+@@ -250,7 +265,17 @@ static void ccw_cursor(struct vc_data *vc, struct fb_info *info, bool enable,
  
   	c = scr_readw((u16 *) vc->vc_pos);
  	attribute = get_attribute(info, c);
@@ -498,11 +488,8 @@ index cbaa75fc1..62e7e1710 100644
  	src = font_data_glyph_buf(par->rotated.buf, width, vpitch, c & charmask);
 +#endif
  	if (!src) {
--		src = font_data_glyph_buf(par->rotated.buf, width, vpitch, c & charmask);
-+		src = font_data_glyph_buf(par->rotated.buf, width, vpitch, '\0');
+ 		src = font_data_glyph_buf(par->rotated.buf, width, vpitch, '\0');
  		if (!src)
- 			return;
- 	}
 diff --git a/drivers/video/fbdev/core/fbcon_cw.c b/drivers/video/fbdev/core/fbcon_cw.c
 index 7606ad38c..7f57fe25a 100644
 --- a/drivers/video/fbdev/core/fbcon_cw.c
@@ -712,114 +699,310 @@ index bdba3a959..918695652 100644
  		src = font_data_glyph_buf(par->rotated.buf, width, vpitch, '\0');
  		if (!src)
 diff --git a/include/linux/selection.h b/include/linux/selection.h
-index bab7d30d3..dc77a8be5 100644
+index bab7d30d3..e69de29bb 100644
 --- a/include/linux/selection.h
 +++ b/include/linux/selection.h
-@@ -46,6 +46,17 @@ void vcs_scr_writew(struct vc_data *vc, u16 val, u16 *org);
- void vcs_scr_updated(struct vc_data *vc);
- 
- int vc_uniscr_check(struct vc_data *vc);
-+#ifdef CONFIG_FONT_CJK
-+u32 vc_uniscr_get_cjk(const struct vc_data *vc, unsigned int row,
-+		      unsigned int col, bool *continuation);
-+#else
-+static inline u32 vc_uniscr_get_cjk(const struct vc_data *vc, unsigned int row,
-+				   unsigned int col, bool *continuation)
-+{
-+	*continuation = false;
-+	return 0;
-+}
-+#endif
- void vc_uniscr_copy_line(const struct vc_data *vc, void *dest, bool viewed,
- 			 unsigned int row, unsigned int col, unsigned int nr);
- 
+@@ -1,52 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+-/*
+- * selection.h
+- *
+- * Interface between console.c, tty_io.c, vt.c, vc_screen.c and selection.c
+- */
+-
+-#ifndef _LINUX_SELECTION_H_
+-#define _LINUX_SELECTION_H_
+-
+-#include <linux/tiocl.h>
+-#include <linux/vt_buffer.h>
+-
+-struct tty_struct;
+-struct vc_data;
+-
+-void clear_selection(void);
+-int set_selection_user(const struct tiocl_selection __user *sel,
+-		       struct tty_struct *tty);
+-int set_selection_kernel(struct tiocl_selection *v, struct tty_struct *tty);
+-int paste_selection(struct tty_struct *tty);
+-int sel_loadlut(u32 __user *lut);
+-int mouse_reporting(void);
+-void mouse_report(struct tty_struct *tty, int butt, int mrx, int mry);
+-
+-bool vc_is_sel(const struct vc_data *vc);
+-
+-extern int console_blanked;
+-
+-extern const unsigned char color_table[];
+-extern unsigned char default_red[];
+-extern unsigned char default_grn[];
+-extern unsigned char default_blu[];
+-
+-unsigned short *screen_pos(const struct vc_data *vc, int w_offset, bool viewed);
+-u16 screen_glyph(const struct vc_data *vc, int offset);
+-u32 screen_glyph_unicode(const struct vc_data *vc, int offset);
+-void complement_pos(struct vc_data *vc, int offset);
+-void invert_screen(struct vc_data *vc, int offset, int count, bool viewed);
+-
+-void getconsxy(const struct vc_data *vc, unsigned char xy[static 2]);
+-void putconsxy(struct vc_data *vc, unsigned char xy[static const 2]);
+-
+-u16 vcs_scr_readw(const struct vc_data *vc, const u16 *org);
+-void vcs_scr_writew(struct vc_data *vc, u16 val, u16 *org);
+-void vcs_scr_updated(struct vc_data *vc);
+-
+-int vc_uniscr_check(struct vc_data *vc);
+-void vc_uniscr_copy_line(const struct vc_data *vc, void *dest, bool viewed,
+-			 unsigned int row, unsigned int col, unsigned int nr);
+-
+-#endif
 diff --git a/lib/fonts/Kconfig b/lib/fonts/Kconfig
-index 7d03823e4..58a5182b2 100644
+index 7d03823e4..e69de29bb 100644
 --- a/lib/fonts/Kconfig
 +++ b/lib/fonts/Kconfig
-@@ -139,6 +139,40 @@ config FONT_6x8
- 	help
- 	  This font is useful for small displays (OLED).
- 
-+config FONT_CJK
-+	bool
-+
-+config FONT_CJK_16x16
-+	bool "CJK 16x16 font" if FONTS
-+	depends on FRAMEBUFFER_CONSOLE && VT_CONSOLE
-+	select FONT_CJK
-+	select CONSOLE_TRANSLATIONS
-+	help
-+	  A 16x16 console font covering the Unicode Basic Multilingual Plane,
-+	  so the framebuffer console can display Chinese, Japanese and Korean
-+	  text. Each glyph occupies two 8x16 cells, and the font data adds
-+	  about 2 MiB to the kernel image.
-+	  Unicode text uses four bytes per screen cell plus row pointers,
-+	  doubled while an alternate screen is saved. Rotation needs 2 MiB per
-+	  framebuffer console instance, in addition to the ordinary font.
-+
-+	  If unsure, say N.
-+
-+config FONT_CJK_32x32
-+	bool "CJK 32x32 font" if FONTS
-+	depends on FRAMEBUFFER_CONSOLE && VT_CONSOLE
-+	select FONT_CJK
-+	select CONSOLE_TRANSLATIONS
-+	default n
-+	help
-+	  A 32x32 console font covering the Unicode Basic Multilingual Plane,
-+	  for screens on which the 16x16 font is too small to read. Each glyph
-+	  occupies two 16x32 cells and the data adds about 8 MiB to the kernel
-+	  image. Apply cjktty-add-cjk32x32-font-data.patch before enabling this
-+	  option; the build fails if font_cjk_32x32.h is empty.
-+
-+	  If unsure, say N.
-+
- config FONT_AUTOSELECT
- 	def_bool y
- 	depends on !FONT_8x8
-@@ -154,6 +188,8 @@ config FONT_AUTOSELECT
- 	depends on !FONT_TER10x18
- 	depends on !FONT_TER16x32
- 	depends on !FONT_6x8
-+	depends on !FONT_CJK_16x16
-+	depends on !FONT_CJK_32x32
- 	select FONT_8x16
- 
- endif # FONT_SUPPORT
+@@ -1,159 +0,0 @@
+-# SPDX-License-Identifier: GPL-2.0-only
+-#
+-# Font configuration
+-#
+-
+-config FONT_SUPPORT
+-	tristate
+-
+-if FONT_SUPPORT
+-
+-config FONTS
+-	bool "Select compiled-in fonts"
+-	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE || DRM_PANIC || DRM_CLIENT_LOG
+-	help
+-	  Say Y here if you would like to use fonts other than the default
+-	  your frame buffer console usually use.
+-
+-	  Note that the answer to this question won't directly affect the
+-	  kernel: saying N will just cause the configurator to skip all
+-	  the questions about foreign fonts.
+-
+-	  If unsure, say N (the default choices are safe).
+-
+-config FONT_8x8
+-	bool "VGA 8x8 font" if FONTS
+-	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE || DRM_PANIC
+-	default y if !SPARC && !FONTS
+-	help
+-	  This is the "high resolution" font for the VGA frame buffer (the one
+-	  provided by the text console 80x50 (and higher) modes).
+-
+-	  Note that this is a poor quality font. The VGA 8x16 font is quite a
+-	  lot more readable.
+-
+-	  Given the resolution provided by the frame buffer device, answer N
+-	  here is safe.
+-
+-config FONT_8x16
+-	bool "VGA 8x16 font" if FONTS
+-	default y if !SPARC && !FONTS
+-	help
+-	  This is the "high resolution" font for the VGA frame buffer (the one
+-	  provided by the VGA text console 80x25 mode.
+-
+-	  If unsure, say Y.
+-
+-config FONT_6x11
+-	bool "Mac console 6x11 font (not supported by all drivers)" if FONTS
+-	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE || DRM_PANIC
+-	default y if !SPARC && !FONTS && MAC
+-	help
+-	  Small console font with Macintosh-style high-half glyphs.  Some Mac
+-	  framebuffer drivers don't support this one at all.
+-
+-config FONT_7x14
+-	bool "console 7x14 font (not supported by all drivers)" if FONTS
+-	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
+-	help
+-	  Console font with characters just a bit smaller than the default.
+-	  If the standard 8x16 font is a little too big for you, say Y.
+-	  Otherwise, say N.
+-
+-config FONT_PEARL_8x8
+-	bool "Pearl (old m68k) console 8x8 font" if FONTS
+-	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
+-	default y if !SPARC && !FONTS && AMIGA
+-	help
+-	  Small console font with PC-style control-character and high-half
+-	  glyphs.
+-
+-config FONT_ACORN_8x8
+-	bool "Acorn console 8x8 font" if FONTS
+-	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
+-	default y if !SPARC && !FONTS && ARM && ARCH_ACORN
+-	help
+-	  Small console font with PC-style control characters and high-half
+-	  glyphs.
+-
+-config FONT_MINI_4x6
+-	bool "Mini 4x6 font"
+-	depends on !SPARC && FONTS
+-
+-config FONT_6x10
+-	bool "Medium-size 6x10 font"
+-	depends on !SPARC && FONTS
+-	help
+-	  Medium-size console font. Suitable for framebuffer consoles on
+-	  embedded devices with a 320x240 screen, to get a reasonable number
+-	  of characters (53x24) that are still at a readable size.
+-
+-config FONT_10x18
+-	bool "console 10x18 font (not supported by all drivers)" if FONTS
+-	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
+-	help
+-	  This is a high resolution console font for machines with very
+-	  big letters. It fits between the sun 12x22 and the normal 8x16 font.
+-	  If other fonts are too big or too small for you, say Y, otherwise say N.
+-
+-config FONT_SUN8x16
+-	bool "Sparc console 8x16 font"
+-	depends on (FRAMEBUFFER_CONSOLE && (FONTS || SPARC)) || \
+-		   BOOTX_TEXT || EARLYFB
+-	help
+-	  This is the high resolution console font for Sun machines. Say Y.
+-
+-config FONT_SUN12x22
+-	bool "Sparc console 12x22 font (not supported by all drivers)"
+-	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
+-	depends on !SPARC && FONTS
+-	help
+-	  This is the high resolution console font for Sun machines with very
+-	  big letters (like the letters used in the SPARC PROM). If the
+-	  standard font is unreadable for you, say Y, otherwise say N.
+-
+-config FONT_TER10x18
+-	bool "Terminus 10x18 font (not supported by all drivers)"
+-	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
+-	depends on !SPARC && FONTS || SPARC
+-	help
+-	  Terminus Font is a clean, fixed width bitmap font, designed
+-	  for long (8 and more hours per day) work with computers.
+-	  This is the high resolution version made for use with 13-16" laptops.
+-	  It fits between the normal 8x16 font and Terminus 16x32.
+-	  If other fonts are unreadable for you, say Y, otherwise say N.
+-
+-config FONT_TER16x32
+-	bool "Terminus 16x32 font (not supported by all drivers)"
+-	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
+-	depends on !SPARC && FONTS || SPARC
+-	help
+-	  Terminus Font is a clean, fixed width bitmap font, designed
+-	  for long (8 and more hours per day) work with computers.
+-	  This is the high resolution, large version for use with HiDPI screens.
+-	  If the standard font is unreadable for you, say Y, otherwise say N.
+-
+-config FONT_6x8
+-	bool "OLED 6x8 font" if FONTS
+-	depends on FRAMEBUFFER_CONSOLE || DRM_PANIC
+-	help
+-	  This font is useful for small displays (OLED).
+-
+-config FONT_AUTOSELECT
+-	def_bool y
+-	depends on !FONT_8x8
+-	depends on !FONT_6x11
+-	depends on !FONT_7x14
+-	depends on !FONT_PEARL_8x8
+-	depends on !FONT_ACORN_8x8
+-	depends on !FONT_MINI_4x6
+-	depends on !FONT_6x10
+-	depends on !FONT_SUN8x16
+-	depends on !FONT_SUN12x22
+-	depends on !FONT_10x18
+-	depends on !FONT_TER10x18
+-	depends on !FONT_TER16x32
+-	depends on !FONT_6x8
+-	select FONT_8x16
+-
+-endif # FONT_SUPPORT
 diff --git a/lib/fonts/Makefile b/lib/fonts/Makefile
-index bc08bf8ea..e8b666056 100644
+index bc08bf8ea..e69de29bb 100644
 --- a/lib/fonts/Makefile
 +++ b/lib/fonts/Makefile
-@@ -20,5 +20,13 @@ font-$(CONFIG_FONT_SUN8x16)   += font_sun8x16.o
- font-$(CONFIG_FONT_SUN12x22)  += font_sun12x22.o
- font-$(CONFIG_FONT_TER10x18)  += font_ter10x18.o
- font-$(CONFIG_FONT_TER16x32)  += font_ter16x32.o
-+font-$(CONFIG_FONT_CJK_16x16) += font_cjk_16x16.o
-+font-$(CONFIG_FONT_CJK_32x32) += font_cjk_32x32.o
-+
-+ifeq ($(CONFIG_FONT_CJK_32x32),y)
-+ifeq ($(shell test -s $(srctree)/lib/fonts/font_cjk_32x32.h && echo y),)
-+$(error CONFIG_FONT_CJK_32x32 requires cjktty-add-cjk32x32-font-data.patch)
-+endif
-+endif
- 
- obj-$(CONFIG_FONT_SUPPORT) += font.o
+@@ -1,24 +0,0 @@
+-# SPDX-License-Identifier: GPL-2.0
+-# Font handling
+-
+-font-y := fonts.o \
+-	  font_cursor.o
+-font-$(CONFIG_FRAMEBUFFER_CONSOLE_ROTATION) += font_rotate.o
+-
+-# Built-in fonts; sorted by Family-Size in ascending order
+-font-$(CONFIG_FONT_6x8)       += font_6x8.o
+-font-$(CONFIG_FONT_6x10)      += font_6x10.o
+-font-$(CONFIG_FONT_6x11)      += font_6x11.o
+-font-$(CONFIG_FONT_7x14)      += font_7x14.o
+-font-$(CONFIG_FONT_8x8)       += font_8x8.o
+-font-$(CONFIG_FONT_8x16)      += font_8x16.o
+-font-$(CONFIG_FONT_10x18)     += font_10x18.o
+-font-$(CONFIG_FONT_ACORN_8x8) += font_acorn_8x8.o
+-font-$(CONFIG_FONT_MINI_4x6)  += font_mini_4x6.o
+-font-$(CONFIG_FONT_PEARL_8x8) += font_pearl_8x8.o
+-font-$(CONFIG_FONT_SUN8x16)   += font_sun8x16.o
+-font-$(CONFIG_FONT_SUN12x22)  += font_sun12x22.o
+-font-$(CONFIG_FONT_TER10x18)  += font_ter10x18.o
+-font-$(CONFIG_FONT_TER16x32)  += font_ter16x32.o
+-
+-obj-$(CONFIG_FONT_SUPPORT) += font.o
 diff --git a/lib/fonts/font.h b/lib/fonts/font.h
-index eae8c563f..4867160f0 100644
+index eae8c563f..e69de29bb 100644
 --- a/lib/fonts/font.h
 +++ b/lib/fonts/font.h
-@@ -46,5 +46,10 @@ font_data_t *__font_data_alloc(unsigned int size, gfp_t flags);
- #define TER16x32_IDX	11
- #define FONT6x8_IDX	12
- #define TER10x18_IDX	13
-+#define CJK16x16_IDX	14
-+#define CJK32x32_IDX	15
-+
-+extern const struct font_desc font_cjk_16x16;
-+extern const struct font_desc font_cjk_32x32;
- 
- #endif
+@@ -1,50 +0,0 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+-
+-#ifndef _LIB_FONTS_FONT_H
+-#define _LIB_FONTS_FONT_H
+-
+-#include <linux/font.h>
+-#include <linux/types.h>
+-
+-/*
+- * Font data
+- */
+-
+-#define FONT_EXTRA_WORDS 4
+-
+-struct font_data {
+-	unsigned int extra[FONT_EXTRA_WORDS];
+-	unsigned char data[];
+-} __packed;
+-
+-/*
+- * font_data_t and helpers
+- */
+-
+-static inline unsigned char *__font_data_wrbuf(font_data_t *fd)
+-{
+-	return (unsigned char *)fd;
+-}
+-
+-font_data_t *__font_data_alloc(unsigned int size, gfp_t flags);
+-
+-/*
+- * Built-in fonts
+- */
+-
+-#define VGA8x8_IDX	0
+-#define VGA8x16_IDX	1
+-#define PEARL8x8_IDX	2
+-#define VGA6x11_IDX	3
+-#define FONT7x14_IDX	4
+-#define	FONT10x18_IDX	5
+-#define SUN8x16_IDX	6
+-#define SUN12x22_IDX	7
+-#define ACORN8x8_IDX	8
+-#define	MINI4x6_IDX	9
+-#define FONT6x10_IDX	10
+-#define TER16x32_IDX	11
+-#define FONT6x8_IDX	12
+-#define TER10x18_IDX	13
+-
+-#endif
 diff --git a/lib/fonts/font_cjk_16x16.c b/lib/fonts/font_cjk_16x16.c
 new file mode 100644
 index 000000000..974532915
@@ -893,19 +1076,442 @@ index 000000000..e5ba86149
 +	.pref	= 19,
 +};
 diff --git a/lib/fonts/fonts.c b/lib/fonts/fonts.c
-index e66a5b6fc..6f87e2865 100644
+index e66a5b6fc..e69de29bb 100644
 --- a/lib/fonts/fonts.c
 +++ b/lib/fonts/fonts.c
-@@ -339,6 +339,12 @@ static const struct font_desc *fonts[] = {
- #ifdef CONFIG_FONT_6x8
- 	&font_6x8,
- #endif
-+#ifdef CONFIG_FONT_CJK_16x16
-+	&font_cjk_16x16,
-+#endif
-+#ifdef CONFIG_FONT_CJK_32x32
-+	&font_cjk_32x32,
-+#endif
- };
- 
- #define num_fonts ARRAY_SIZE(fonts)
+@@ -1,435 +0,0 @@
+-/*
+- * `Soft' font definitions
+- *
+- *    Created 1995 by Geert Uytterhoeven
+- *    Rewritten 1998 by Martin Mares <mj@ucw.cz>
+- *
+- *	2001 - Documented with DocBook
+- *	- Brad Douglas <brad@neruo.com>
+- *
+- * This file is subject to the terms and conditions of the GNU General Public
+- * License.  See the file COPYING in the main directory of this archive
+- * for more details.
+- */
+-
+-#include <linux/container_of.h>
+-#include <linux/kd.h>
+-#include <linux/module.h>
+-#include <linux/overflow.h>
+-#include <linux/slab.h>
+-#include <linux/string.h>
+-#include <linux/types.h>
+-
+-#if defined(__mc68000__)
+-#include <asm/setup.h>
+-#endif
+-
+-#include "font.h"
+-
+-#define console_font_pitch(font) font_glyph_pitch((font)->width)
+-
+-/*
+- * Helpers for font_data_t
+- */
+-
+-/* Extra word getters */
+-#define REFCOUNT(fd)	(((int *)(fd))[-1])
+-#define FNTSIZE(fd)	(((int *)(fd))[-2])
+-#define FNTSUM(fd)	(((int *)(fd))[-4])
+-
+-static struct font_data *to_font_data_struct(font_data_t *fd)
+-{
+-	return container_of(fd, struct font_data, data[0]);
+-}
+-
+-static bool font_data_is_internal(font_data_t *fd)
+-{
+-	return !REFCOUNT(fd); /* internal fonts have no reference counting */
+-}
+-
+-font_data_t *__font_data_alloc(unsigned int size, gfp_t flags)
+-{
+-	unsigned int alloc_size;
+-	struct font_data *font_data;
+-	font_data_t *fd;
+-
+-	/* Check for overflow in allocation size calculation */
+-	if (check_add_overflow(sizeof(*font_data), size, &alloc_size))
+-		return ERR_PTR(-EINVAL);
+-
+-	font_data = kzalloc(alloc_size, flags);
+-	if (!font_data)
+-		return ERR_PTR(-ENOMEM);
+-
+-	fd = font_data->data;
+-	REFCOUNT(fd) = 1; /* start with reference acquired */
+-	FNTSIZE(fd) = size;
+-
+-	return fd;
+-}
+-
+-static font_data_t *font_data_alloc(unsigned int pitch, unsigned int h, unsigned int charcount)
+-{
+-	unsigned int size;
+-
+-	/* Check for integer overflow in font-size calculation */
+-	if (check_mul_overflow(h, pitch, &size) ||
+-	    check_mul_overflow(size, charcount, &size))
+-		return ERR_PTR(-EINVAL);
+-
+-	return __font_data_alloc(size, GFP_USER);
+-}
+-
+-static void font_data_free(font_data_t *fd)
+-{
+-	kfree(to_font_data_struct(fd));
+-}
+-
+-/**
+- * font_data_import - Allocates and initializes font data from user space
+- * @font: A font from user space
+- * @vpitch: The size of a single glyph in @font in bytes
+- * @calc_csum: An optional helper to calculate a chechsum
+- *
+- * Font data from user space must be translated to the kernel's format. The
+- * font's glyph geometry and data is provided in @font. The parameter @vpitch
+- * gives the number of bytes per glyph, including trailing bytes.
+- *
+- * The parameter @calc_csum is optional. Fbcon passes crc32() to calculate the
+- * font data's checksum.
+- *
+- * Returns:
+- * Newly initialized font data on success, or a pointer-encoded errno value otherwise.
+- */
+-font_data_t *font_data_import(const struct console_font *font, unsigned int vpitch,
+-			      u32 (*calc_csum)(u32, const void *, size_t))
+-{
+-	unsigned int pitch = console_font_pitch(font);
+-	unsigned int h = font->height;
+-	unsigned int charcount = font->charcount;
+-	const unsigned char *data = font->data;
+-	unsigned char *font_data;
+-	unsigned int i;
+-	font_data_t *fd;
+-
+-	fd = font_data_alloc(pitch, h, charcount);
+-	if (IS_ERR(fd))
+-		return fd;
+-	font_data = __font_data_wrbuf(fd);
+-
+-	for (i = 0; i < charcount; ++i)
+-		memcpy(font_data + i * h * pitch, data + i * vpitch * pitch, h * pitch);
+-
+-	if (calc_csum)
+-		FNTSUM(fd) = calc_csum(0, font_data, FNTSIZE(fd));
+-
+-	return fd;
+-}
+-EXPORT_SYMBOL_GPL(font_data_import);
+-
+-/**
+- * font_data_get - Acquires a reference on font data
+- * @fd: Font data
+- *
+- * Font data from user space is reference counted. The helper
+- * font_data_get() increases the reference counter by one. Invoke
+- * font_data_put() to release the reference.
+- *
+- * Internal font data is located in read-only memory. In this case
+- * the helper returns success without modifying the counter field.
+- * It is still required to call font_data_put() on internal font data.
+- */
+-void font_data_get(font_data_t *fd)
+-{
+-	if (font_data_is_internal(fd))
+-		return; /* never ref static data */
+-
+-	if (WARN_ON(!REFCOUNT(fd)))
+-		return; /* should never be 0 */
+-	++REFCOUNT(fd);
+-}
+-EXPORT_SYMBOL_GPL(font_data_get);
+-
+-/**
+- * font_data_put - Release a reference on font data
+- * @fd: Font data
+- *
+- * Font data from user space is reference counted. The helper
+- * font_data_put() decreases the reference counter by one. If this was
+- * the final reference, it frees the allocated memory.
+- *
+- * Internal font data is located in read-only memory. In this case
+- * the helper returns success without modifying the counter field.
+- *
+- * Returns:
+- * True if the font data's memory buffer has been freed, false otherwise.
+- */
+-bool font_data_put(font_data_t *fd)
+-{
+-	unsigned int count;
+-
+-	if (font_data_is_internal(fd))
+-		return false; /* never unref static data */
+-
+-	if (WARN_ON(!REFCOUNT(fd)))
+-		return false; /* should never be 0 */
+-
+-	count = --REFCOUNT(fd);
+-	if (!count)
+-		font_data_free(fd);
+-
+-	return !count;
+-}
+-EXPORT_SYMBOL_GPL(font_data_put);
+-
+-/**
+- * font_data_size - Return size of the font data in bytes
+- * @fd: Font data
+- *
+- * Returns:
+- * The number of bytes in the given font data.
+- */
+-unsigned int font_data_size(font_data_t *fd)
+-{
+-	return FNTSIZE(fd);
+-}
+-EXPORT_SYMBOL_GPL(font_data_size);
+-
+-static unsigned int font_data_num_glyphs(font_data_t *fd, unsigned int width, unsigned int height)
+-{
+-	return font_data_size(fd) / font_glyph_size(width, height);
+-}
+-
+-/**
+- * font_data_glyph_buf() - Returns the glyph for a specific character as raw bytes
+- * @fd: The font data
+- * @width: The glyph width in bits per scanline
+- * @vpitch: The number of scanlines per glyph
+- * @c: The character
+- *
+- * Glyphs start at fixed intervals within the font data. font_data_glyph_buf()
+- * returns the glyph shape of the specified character. If no such glyph
+- * exists in the font, it returns NULL.
+- *
+- * Returns:
+- * The character's raw glyph shape, or NULL if no glyph exists for the character. The
+- * provided buffer is read-only.
+- */
+-const unsigned char *font_data_glyph_buf(font_data_t *fd,
+-					 unsigned int width, unsigned int vpitch,
+-					 unsigned int c)
+-{
+-	if (c >= font_data_num_glyphs(fd, width, vpitch))
+-		return NULL;
+-
+-	return font_data_buf(fd) + font_glyph_size(width, vpitch) * c;
+-}
+-EXPORT_SYMBOL_GPL(font_data_glyph_buf);
+-
+-/**
+- * font_data_is_equal - Compares font data for equality
+- * @lhs: Left-hand side font data
+- * @rhs: Right-hand-size font data
+- *
+- * Font data is equal if is constain the same sequence of values. The
+- * helper also use the checksum, if both arguments contain it. Font data
+- * coming from different origins, internal or from user space, is never
+- * equal. Allowing this would break reference counting.
+- *
+- * Returns:
+- * True if the given font data is equal, false otherwise.
+- */
+-bool font_data_is_equal(font_data_t *lhs, font_data_t *rhs)
+-{
+-	if (font_data_is_internal(lhs) != font_data_is_internal(rhs))
+-		return false;
+-	if (font_data_size(lhs) != font_data_size(rhs))
+-		return false;
+-	if (FNTSUM(lhs) && FNTSUM(rhs) && FNTSUM(lhs) != FNTSUM(rhs))
+-		return false;
+-
+-	return !memcmp(lhs, rhs, FNTSIZE(lhs));
+-}
+-EXPORT_SYMBOL_GPL(font_data_is_equal);
+-
+-/**
+- * font_data_export - Stores font data for user space
+- * @fd: Font data
+- * @font: A font for user space
+- * @vpitch: The size of a single glyph in @font in bytes
+- *
+- * Store the font data given in @fd to the font in @font. Values and
+- * pointers in @font are pre-initialized. This helper mostly checks some
+- * corner cases and translates glyph sizes according to the value given
+- * @vpitch.
+- *
+- * Returns:
+- * 0 on success, or a negative errno code otherwise.
+- */
+-int font_data_export(font_data_t *fd, struct console_font *font, unsigned int vpitch)
+-{
+-	const unsigned char *font_data = font_data_buf(fd);
+-	unsigned char *data = font->data;
+-	unsigned int pitch = console_font_pitch(font);
+-	unsigned int glyphsize, i;
+-
+-	if (!font->width || !font->height || !font->charcount || !font->data)
+-		return 0;
+-
+-	glyphsize = font->height * pitch;
+-
+-	if (font->charcount * glyphsize > font_data_size(fd))
+-		return -EINVAL;
+-
+-	for (i = 0; i < font->charcount; i++) {
+-		memcpy(data, font_data, glyphsize);
+-		memset(data + glyphsize, 0, pitch * vpitch - glyphsize);
+-		data += pitch * vpitch;
+-		font_data += glyphsize;
+-	}
+-
+-	return 0;
+-}
+-EXPORT_SYMBOL_GPL(font_data_export);
+-
+-/*
+- * Font lookup
+- */
+-
+-static const struct font_desc *fonts[] = {
+-#ifdef CONFIG_FONT_8x8
+-	&font_vga_8x8,
+-#endif
+-#ifdef CONFIG_FONT_8x16
+-	&font_vga_8x16,
+-#endif
+-#ifdef CONFIG_FONT_6x11
+-	&font_vga_6x11,
+-#endif
+-#ifdef CONFIG_FONT_7x14
+-	&font_7x14,
+-#endif
+-#ifdef CONFIG_FONT_SUN8x16
+-	&font_sun_8x16,
+-#endif
+-#ifdef CONFIG_FONT_SUN12x22
+-	&font_sun_12x22,
+-#endif
+-#ifdef CONFIG_FONT_10x18
+-	&font_10x18,
+-#endif
+-#ifdef CONFIG_FONT_ACORN_8x8
+-	&font_acorn_8x8,
+-#endif
+-#ifdef CONFIG_FONT_PEARL_8x8
+-	&font_pearl_8x8,
+-#endif
+-#ifdef CONFIG_FONT_MINI_4x6
+-	&font_mini_4x6,
+-#endif
+-#ifdef CONFIG_FONT_6x10
+-	&font_6x10,
+-#endif
+-#ifdef CONFIG_FONT_TER10x18
+-	&font_ter_10x18,
+-#endif
+-#ifdef CONFIG_FONT_TER16x32
+-	&font_ter_16x32,
+-#endif
+-#ifdef CONFIG_FONT_6x8
+-	&font_6x8,
+-#endif
+-};
+-
+-#define num_fonts ARRAY_SIZE(fonts)
+-
+-#ifdef NO_FONTS
+-#error No fonts configured.
+-#endif
+-
+-
+-/**
+- *	find_font - find a font
+- *	@name: string name of a font
+- *
+- *	Find a specified font with string name @name.
+- *
+- *	Returns %NULL if no font found, or a pointer to the
+- *	specified font.
+- *
+- */
+-const struct font_desc *find_font(const char *name)
+-{
+-	unsigned int i;
+-
+-	BUILD_BUG_ON(!num_fonts);
+-	for (i = 0; i < num_fonts; i++)
+-		if (!strcmp(fonts[i]->name, name))
+-			return fonts[i];
+-	return NULL;
+-}
+-EXPORT_SYMBOL(find_font);
+-
+-
+-/**
+- *	get_default_font - get default font
+- *	@xres: screen size of X
+- *	@yres: screen size of Y
+- *	@font_w: bit array of supported widths (1 - FB_MAX_BLIT_WIDTH)
+- *	@font_h: bit array of supported heights (1 - FB_MAX_BLIT_HEIGHT)
+- *
+- *	Get the default font for a specified screen size.
+- *	Dimensions are in pixels.
+- *
+- *	font_w or font_h being NULL means all values are supported.
+- *
+- *	Returns %NULL if no font is found, or a pointer to the
+- *	chosen font.
+- *
+- */
+-const struct font_desc *get_default_font(int xres, int yres,
+-					 unsigned long *font_w,
+-					 unsigned long *font_h)
+-{
+-	int i, c, cc, res;
+-	const struct font_desc *f, *g;
+-
+-	g = NULL;
+-	cc = -10000;
+-	for (i = 0; i < num_fonts; i++) {
+-		f = fonts[i];
+-		c = f->pref;
+-#if defined(__mc68000__)
+-#ifdef CONFIG_FONT_PEARL_8x8
+-		if (MACH_IS_AMIGA && f->idx == PEARL8x8_IDX)
+-			c = 100;
+-#endif
+-#ifdef CONFIG_FONT_6x11
+-		if (MACH_IS_MAC && xres < 640 && f->idx == VGA6x11_IDX)
+-			c = 100;
+-#endif
+-#endif
+-		if ((yres < 400) == (f->height <= 8))
+-			c += 1000;
+-
+-		/* prefer a bigger font for high resolution */
+-		res = (xres / f->width) * (yres / f->height) / 1000;
+-		if (res > 20)
+-			c += 20 - res;
+-
+-		if ((!font_w || test_bit(f->width - 1, font_w)) &&
+-		    (!font_h || test_bit(f->height - 1, font_h)))
+-			c += 1000;
+-
+-		if (c > cc) {
+-			cc = c;
+-			g = f;
+-		}
+-	}
+-	return g;
+-}
+-EXPORT_SYMBOL(get_default_font);
+-
+-MODULE_AUTHOR("James Simmons <jsimmons@users.sf.net>");
+-MODULE_DESCRIPTION("Console Fonts");
+-MODULE_LICENSE("GPL");
